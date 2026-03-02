@@ -4,6 +4,9 @@ export default function ThreeScene(){
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         if (!containerRef.current) return;
+
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({antialias: true});
