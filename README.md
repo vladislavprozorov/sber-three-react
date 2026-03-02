@@ -8,10 +8,32 @@
 
 ## Скриншоты
 
-![Основной вид](docs/screenshots/main.png)
-![Выбранный этаж](docs/screenshots/floor-selected.png)
-![Фильтр по статусу](docs/screenshots/status-filter.png)
-![Мобильный вид](docs/screenshots/mobile.jpg)
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/main.png" alt="Основной вид" width="100%"/>
+      <br/>
+      <sub>Основной вид — здание с перекрытиями</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/floor-selected.png" alt="Выбранный этаж" width="100%"/>
+      <br/>
+      <sub>Выбранный этаж — панель с данными и прогрессом</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/status-filter.png" alt="Фильтр по статусу" width="100%"/>
+      <br/>
+      <sub>Фильтр по статусу — подсветка нужных этажей</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/mobile.jpg" alt="Мобильный вид" width="100%"/>
+      <br/>
+      <sub>Мобильный вид — вертикальный layout</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
