@@ -2,14 +2,18 @@ import { useRef, useEffect } from "react"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { mockFloors, STATUS_COLORS } from "../building-info/floorService"
+import type { FilterValue } from "./StatusFilter"
 
 type Props = {
   onFloorSelect?: (floorIndex: number) => void
+  activeFilter?: FilterValue
 }
 
-export default function ThreeScene({ onFloorSelect }: Props) {
+export default function ThreeScene({ onFloorSelect, activeFilter = "all" }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const tooltipRef = useRef<HTMLDivElement | null>(null)
+  const floorsRef = useRef<THREE.Mesh[]>([])
+  const selectedIndexRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -72,12 +76,17 @@ export default function ThreeScene({ onFloorSelect }: Props) {
     const slabMaterial = new THREE.MeshStandardMaterial({ color: "#555560" })
 
     const floors: THREE.Mesh[] = []
+    floorsRef.current = floors
     let selectedIndex: number | null = null
     let hoveredMesh: THREE.Mesh | null = null
 
     for (let i = 0; i < mockFloors.length; i++) {
       const data = mockFloors[i]
-      const mat = new THREE.MeshStandardMaterial({ color: STATUS_COLORS[data.status] })
+      const mat = new THREE.MeshStandardMaterial({
+        color: STATUS_COLORS[data.status],
+        transparent: true,
+        opacity: 1,
+      })
       const floor = new THREE.Mesh(floorGeometry, mat)
       floor.position.y = i * FLOOR_STEP + FLOOR_HEIGHT / 2
       floor.userData.floorIndex = i
@@ -96,6 +105,7 @@ export default function ThreeScene({ onFloorSelect }: Props) {
         let targetColor: THREE.ColorRepresentation = base
 
         if (idx === selectedIndex) {
+          selectedIndexRef.current = selectedIndex
           targetColor = "#ffffff"
         } else if (floor === hoveredMesh) {
           const c = new THREE.Color(base)
@@ -199,6 +209,18 @@ export default function ThreeScene({ onFloorSelect }: Props) {
       container.removeChild(renderer.domElement)
     }
   }, [])
+
+  // Реакция на изменение фильтра — скрываем/показываем этажи
+  useEffect(() => {
+    floorsRef.current.forEach((floor) => {
+      const idx = floor.userData.floorIndex as number
+      const status = mockFloors[idx].status
+      const mat = floor.material as THREE.MeshStandardMaterial
+      const hidden = activeFilter !== "all" && status !== activeFilter
+      mat.opacity = hidden ? 0.12 : 1
+      floor.visible = true // оставляем в сцене, просто меняем прозрачность
+    })
+  }, [activeFilter])
 
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0 }}>
