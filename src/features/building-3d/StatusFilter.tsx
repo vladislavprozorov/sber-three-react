@@ -36,17 +36,19 @@ export default function StatusFilter({ activeFilter, onChange }: Props) {
             key={value}
             onClick={() => onChange(value)}
             style={{
-              padding: "6px 14px",
+              padding: "5px 10px",
               borderRadius: 20,
               border: `1.5px solid ${isActive ? color : "rgba(255,255,255,0.15)"}`,
               background: isActive ? `${color}22` : "rgba(0,0,0,0.55)",
               color: isActive ? color : "#999",
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: isActive ? 600 : 400,
               cursor: "pointer",
               backdropFilter: "blur(6px)",
               transition: "all 0.18s ease",
               outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
             }}
           >
             {label}

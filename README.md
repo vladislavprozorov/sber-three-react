@@ -11,6 +11,7 @@
 ![Основной вид](docs/screenshots/main.png)
 ![Выбранный этаж](docs/screenshots/floor-selected.png)
 ![Фильтр по статусу](docs/screenshots/status-filter.png)
+![Мобильный вид](docs/screenshots/mobile.png)
 
 ---
 
@@ -43,6 +44,7 @@
 - Легенда статусов на сцене
 - Панель с данными этажа и shimmer-скелетоном во время загрузки
 - Адаптивный canvas через ResizeObserver
+- Адаптивный layout для мобильных устройств — вертикальный стек на экранах до 768px
 - CI/CD — автоматический деплой на GitHub Pages при каждом пуше в main
 
 ---
@@ -63,7 +65,12 @@
 ```
 src/
   app/
-    App.tsx                      # Корневой компонент, глобальное состояние
+    App.tsx                      # Корневой компонент — только разметка
+    hooks/
+      useBuildingViewer.ts       # Хук состояния просмотрщика (этаж, фильтр)
+  shared/
+    hooks/
+      useIsMobile.ts             # Хук определения мобильного устройства
   features/
     building-3d/
       ThreeScene.tsx             # Three.js сцена, камера, raycasting, controls
@@ -74,10 +81,15 @@ src/
       floorService.ts            # Mock API, типы и маппинги статусов
 ```
 
-Движок визуализации и UI намеренно разделены:
+Слои импортируются строго сверху вниз по правилам FSD:
 
+```
+app  →  features  →  shared
+```
+
+- `useBuildingViewer` живёт в `app/hooks` — это состояние уровня приложения
+- `useIsMobile` живёт в `shared/hooks` — это переиспользуемая утилита без бизнес-логики
 - `ThreeScene` управляет WebGL-контекстом и передаёт события в React через коллбэки
-- `App` управляет состоянием и передаёт данные в UI-компоненты
 - `floorService` — слой данных, который можно заменить реальным REST API без изменений в UI
 
 ---
@@ -106,3 +118,4 @@ npm run build
 | `feature/orbit-controls`    | OrbitControls с затуханием                            |
 | `feature/floor-slabs`       | Плиты-перекрытия между этажами                        |
 | `feature/status-filter`     | Кнопки-фильтры по статусу                             |
+| `feature/mobile-layout`     | Адаптивный layout, хуки useIsMobile и useBuildingViewer |

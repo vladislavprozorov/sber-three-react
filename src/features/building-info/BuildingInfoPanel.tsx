@@ -3,6 +3,7 @@ import { fetchFloorData, STATUS_COLORS, STATUS_LABELS, type FloorData } from "./
 
 type Props = {
   selectedFloor: number | null
+  isMobile?: boolean
 }
 
 function SkeletonLine({ width = "100%" }: { width?: string }) {
@@ -21,7 +22,7 @@ function SkeletonLine({ width = "100%" }: { width?: string }) {
   )
 }
 
-export default function BuildingInfoPanel({ selectedFloor }: Props) {
+export default function BuildingInfoPanel({ selectedFloor, isMobile = false }: Props) {
   const [data, setData] = useState<FloorData | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -43,12 +44,15 @@ export default function BuildingInfoPanel({ selectedFloor }: Props) {
   return (
     <div
       style={{
-        width: 300,
-        padding: 24,
+        width: isMobile ? "100%" : 300,
+        padding: isMobile ? "16px 20px" : 24,
         background: "#111",
         color: "white",
         fontFamily: "sans-serif",
-        borderLeft: "1px solid #222",
+        borderLeft: isMobile ? "none" : "1px solid #222",
+        borderTop: isMobile ? "1px solid #222" : "none",
+        boxSizing: "border-box",
+        flexShrink: 0,
       }}
     >
       <style>{`
