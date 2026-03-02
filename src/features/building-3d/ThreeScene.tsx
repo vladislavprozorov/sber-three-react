@@ -64,7 +64,13 @@ export default function ThreeScene({ onFloorSelect }: Props) {
     const raycaster = new THREE.Raycaster()
     const mouse = new THREE.Vector2()
 
-    const geometry = new THREE.BoxGeometry(4, 2, 4)
+    const FLOOR_HEIGHT = 1.7
+    const FLOOR_STEP = 2.0
+    const floorGeometry = new THREE.BoxGeometry(4, FLOOR_HEIGHT, 4)
+
+    const slabGeometry = new THREE.BoxGeometry(4.3, 0.25, 4.3)
+    const slabMaterial = new THREE.MeshStandardMaterial({ color: "#555560" })
+
     const floors: THREE.Mesh[] = []
     let selectedIndex: number | null = null
     let hoveredMesh: THREE.Mesh | null = null
@@ -72,11 +78,15 @@ export default function ThreeScene({ onFloorSelect }: Props) {
     for (let i = 0; i < mockFloors.length; i++) {
       const data = mockFloors[i]
       const mat = new THREE.MeshStandardMaterial({ color: STATUS_COLORS[data.status] })
-      const floor = new THREE.Mesh(geometry, mat)
-      floor.position.y = i * 2
+      const floor = new THREE.Mesh(floorGeometry, mat)
+      floor.position.y = i * FLOOR_STEP + FLOOR_HEIGHT / 2
       floor.userData.floorIndex = i
       floors.push(floor)
       scene.add(floor)
+
+      const slab = new THREE.Mesh(slabGeometry, slabMaterial)
+      slab.position.y = i * FLOOR_STEP + FLOOR_HEIGHT + 0.125
+      scene.add(slab)
     }
 
     function refreshColors() {
@@ -97,10 +107,10 @@ export default function ThreeScene({ onFloorSelect }: Props) {
     }
 
     function moveCameraToFloor(floorY: number) {
-      cameraTargetPos.set(7, floorY + 4, 12)
-      cameraLookAt.set(0, floorY + 1, 0)
+      cameraTargetPos.set(7, floorY + 3, 12)
+      cameraLookAt.set(0, floorY + 0.5, 0)
       isAnimatingCamera = true
-      controls.target.set(0, floorY + 1, 0)
+      controls.target.set(0, floorY + 0.5, 0)
     }
 
     function onClick(event: MouseEvent) {
