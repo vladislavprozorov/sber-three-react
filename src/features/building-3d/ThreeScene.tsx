@@ -1,25 +1,37 @@
 import { useRef, useEffect } from "react"
 import * as THREE from "three"
 
-export default function ThreeScene() {
+type Props = {
+    onFloorSelect?: (floorIndex: number) => void
+}
+export default function ThreeScene({ onFloorSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
 
-    const width = containerRef.current.clientWidth
-    const height = containerRef.current.clientHeight
+    const container = containerRef.current
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color("#1e1e1e")
 
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000)
+    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight || 1, 0.1, 1000)
     camera.position.set(5, 5, 10)
     camera.lookAt(0, 4, 0)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
-    renderer.setSize(width, height)
-    containerRef.current.appendChild(renderer.domElement)
+    renderer.setSize(container.clientWidth || container.offsetWidth, container.clientHeight || container.offsetHeight)
+    container.appendChild(renderer.domElement)
+
+    const resizeObserver = new ResizeObserver(() => {
+      const w = container.clientWidth
+      const h = container.clientHeight
+      if (w === 0 || h === 0) return
+      camera.aspect = w / h
+      camera.updateProjectionMatrix()
+      renderer.setSize(w, h)
+    })
+    resizeObserver.observe(container)
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
     scene.add(ambientLight)
@@ -67,7 +79,9 @@ export default function ThreeScene() {
 
         ;(selected.material as THREE.MeshStandardMaterial).color.set("red")
 
-        console.log("Выбран этаж:", selected.userData.floorIndex)
+        if (onFloorSelect) {
+          onFloorSelect(selected.userData.floorIndex)
+        }
       }
     }
 
@@ -82,16 +96,17 @@ export default function ThreeScene() {
 
     return () => {
       renderer.domElement.removeEventListener("click", onClick)
+      resizeObserver.disconnect()
       renderer.dispose()
       scene.clear()
-      containerRef.current?.removeChild(renderer.domElement)
+      container.removeChild(renderer.domElement)
     }
   }, [])
 
   return (
     <div
       ref={containerRef}
-      style={{ width: "100%", height: "100vh" }}
+      style={{ position: "absolute", inset: 0 }}
     />
   )
 }
