@@ -210,7 +210,6 @@ export default function ThreeScene({ onFloorSelect, activeFilter = "all" }: Prop
     }
   }, [])
 
-  // Реакция на изменение фильтра — скрываем/показываем этажи
   useEffect(() => {
     floorsRef.current.forEach((floor) => {
       const idx = floor.userData.floorIndex as number
@@ -218,7 +217,7 @@ export default function ThreeScene({ onFloorSelect, activeFilter = "all" }: Prop
       const mat = floor.material as THREE.MeshStandardMaterial
       const hidden = activeFilter !== "all" && status !== activeFilter
       mat.opacity = hidden ? 0.12 : 1
-      floor.visible = true // оставляем в сцене, просто меняем прозрачность
+      floor.visible = true 
     })
   }, [activeFilter])
 
