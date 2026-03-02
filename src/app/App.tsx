@@ -15,23 +15,34 @@ export default function App() {
         display: "flex",
         flexDirection: isMobile ? "column" : "row",
         height: "100vh",
-        overflow: isMobile ? "auto" : "hidden",
+        overflow: "hidden",
+        background: "#1e1e1e",
       }}
     >
+      {/* 3D сцена */}
       <div
         style={{
           flex: isMobile ? "none" : 1,
           position: "relative",
-          height: isMobile ? "60vh" : "100%",
-          minHeight: isMobile ? 300 : undefined,
+          height: isMobile ? "65vh" : "100%",
+          flexShrink: 0,
         }}
       >
-        <ThreeScene onFloorSelect={selectFloor} activeFilter={activeFilter} />
-        <StatusLegend />
+        <ThreeScene onFloorSelect={selectFloor} activeFilter={activeFilter} isMobile={isMobile} />
+        <StatusLegend isMobile={isMobile} />
         <StatusFilter activeFilter={activeFilter} onChange={setFilter} />
       </div>
 
-      <BuildingInfoPanel selectedFloor={selectedFloor} isMobile={isMobile} />
+      {/* Панель информации */}
+      <div
+        style={{
+          flex: isMobile ? "none" : "0 0 300px",
+          height: isMobile ? "35vh" : "100%",
+          overflowY: "auto",
+        }}
+      >
+        <BuildingInfoPanel selectedFloor={selectedFloor} isMobile={isMobile} />
+      </div>
     </div>
   )
 }

@@ -7,9 +7,10 @@ import type { FilterValue } from "./StatusFilter"
 type Props = {
   onFloorSelect?: (floorIndex: number) => void
   activeFilter?: FilterValue
+  isMobile?: boolean
 }
 
-export default function ThreeScene({ onFloorSelect, activeFilter = "all" }: Props) {
+export default function ThreeScene({ onFloorSelect, activeFilter = "all", isMobile = false }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const tooltipRef = useRef<HTMLDivElement | null>(null)
   const floorsRef = useRef<THREE.Mesh[]>([])
@@ -23,15 +24,16 @@ export default function ThreeScene({ onFloorSelect, activeFilter = "all" }: Prop
     scene.background = new THREE.Color("#1e1e1e")
 
     const camera = new THREE.PerspectiveCamera(
-      75,
+      60,
       container.clientWidth / container.clientHeight || 1,
       0.1,
       1000,
     )
-    camera.position.set(5, 5, 10)
+    const initCamZ = isMobile ? 18 : 10
+    camera.position.set(0, 5, initCamZ)
     camera.lookAt(0, 4, 0)
 
-    const cameraTargetPos = new THREE.Vector3(5, 5, 10)
+    const cameraTargetPos = new THREE.Vector3(0, 5, initCamZ)
     const cameraLookAt = new THREE.Vector3(0, 4, 0)
     let isAnimatingCamera = false
 

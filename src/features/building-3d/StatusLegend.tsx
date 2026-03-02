@@ -2,7 +2,13 @@ import { STATUS_COLORS, STATUS_LABELS, type FloorStatus } from "../building-info
 
 const STATUSES: FloorStatus[] = ["ready", "building", "problem"]
 
-export default function StatusLegend() {
+type Props = {
+  isMobile?: boolean
+}
+
+export default function StatusLegend({ isMobile = false }: Props) {
+  if (isMobile) return null
+
   return (
     <div
       style={{

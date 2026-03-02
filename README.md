@@ -11,7 +11,7 @@
 ![Основной вид](docs/screenshots/main.png)
 ![Выбранный этаж](docs/screenshots/floor-selected.png)
 ![Фильтр по статусу](docs/screenshots/status-filter.png)
-![Мобильный вид](docs/screenshots/mobile.png)
+![Мобильный вид](docs/screenshots/mobile.jpg)
 
 ---
 
@@ -51,12 +51,12 @@
 
 ## Стек технологий
 
-| Слой       | Технологии                              |
-|------------|-----------------------------------------|
-| UI         | React 18, TypeScript                    |
-| 3D         | Three.js, OrbitControls, Raycaster      |
-| Сборка     | Vite                                    |
-| CI/CD      | GitHub Actions, GitHub Pages            |
+| Слой   | Технологии                         |
+| ------ | ---------------------------------- |
+| UI     | React 18, TypeScript               |
+| 3D     | Three.js, OrbitControls, Raycaster |
+| Сборка | Vite                               |
+| CI/CD  | GitHub Actions, GitHub Pages       |
 
 ---
 
@@ -111,11 +111,11 @@ npm run build
 
 ## История веток
 
-| Ветка                       | Описание                                              |
-|-----------------------------|-------------------------------------------------------|
-| `feature/enhance-3d-viewer` | Mock API, статусные цвета, hover-тултип, lerp камеры  |
-| `feature/status-legend`     | Легенда статусов поверх сцены                         |
-| `feature/orbit-controls`    | OrbitControls с затуханием                            |
-| `feature/floor-slabs`       | Плиты-перекрытия между этажами                        |
-| `feature/status-filter`     | Кнопки-фильтры по статусу                             |
+| Ветка                       | Описание                                                |
+| --------------------------- | ------------------------------------------------------- |
+| `feature/enhance-3d-viewer` | Mock API, статусные цвета, hover-тултип, lerp камеры    |
+| `feature/status-legend`     | Легенда статусов поверх сцены                           |
+| `feature/orbit-controls`    | OrbitControls с затуханием                              |
+| `feature/floor-slabs`       | Плиты-перекрытия между этажами                          |
+| `feature/status-filter`     | Кнопки-фильтры по статусу                               |
 | `feature/mobile-layout`     | Адаптивный layout, хуки useIsMobile и useBuildingViewer |

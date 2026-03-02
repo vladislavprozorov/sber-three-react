@@ -44,15 +44,15 @@ export default function BuildingInfoPanel({ selectedFloor, isMobile = false }: P
   return (
     <div
       style={{
-        width: isMobile ? "100%" : 300,
-        padding: isMobile ? "16px 20px" : 24,
+        width: "100%",
+        height: "100%",
+        padding: isMobile ? "12px 16px" : 24,
         background: "#111",
         color: "white",
         fontFamily: "sans-serif",
         borderLeft: isMobile ? "none" : "1px solid #222",
         borderTop: isMobile ? "1px solid #222" : "none",
         boxSizing: "border-box",
-        flexShrink: 0,
       }}
     >
       <style>{`
@@ -63,7 +63,9 @@ export default function BuildingInfoPanel({ selectedFloor, isMobile = false }: P
       `}</style>
 
       {selectedFloor === null && (
-        <p style={{ color: "#888", marginTop: 0 }}>Выберите этаж</p>
+        <p style={{ color: "#888", marginTop: 0, fontSize: isMobile ? 13 : 14 }}>
+          Нажмите на этаж
+        </p>
       )}
 
       {loading && (
@@ -78,9 +80,9 @@ export default function BuildingInfoPanel({ selectedFloor, isMobile = false }: P
 
       {!loading && data && (
         <>
-          <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>{data.label}</h2>
+          <h2 style={{ margin: isMobile ? "0 0 8px" : "0 0 16px", fontSize: isMobile ? 15 : 18 }}>{data.label}</h2>
 
-          <div style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ marginBottom: isMobile ? 6 : 10, display: "flex", alignItems: "center", gap: 8 }}>
             <span
               style={{
                 display: "inline-block",
