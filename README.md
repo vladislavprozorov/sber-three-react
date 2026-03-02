@@ -1,73 +1,108 @@
-# React + TypeScript + Vite
+# 3D-визуализатор здания
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[![Deploy to GitHub Pages](https://github.com/vladislavprozorov/sber-three-react/actions/workflows/deploy.yml/badge.svg)](https://github.com/vladislavprozorov/sber-three-react/actions/workflows/deploy.yml)
 
-Currently, two official plugins are available:
+Демо: [https://vladislavprozorov.github.io/sber-three-react/](https://vladislavprozorov.github.io/sber-three-react/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## Скриншоты
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+![Основной вид](docs/screenshots/main.png)
+![Выбранный этаж](docs/screenshots/floor-selected.png)
+![Фильтр по статусу](docs/screenshots/status-filter.png)
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## О проекте
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Интерактивная 3D-визуализация строящегося здания на React и Three.js.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Проект демонстрирует архитектурное разделение между движком визуализации (Three.js) и логическим слоем приложения (React) — по аналогии с системами управления строительными проектами.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+Клик пользователя -> Raycaster -> Этаж выбран
+                         |
+                 Обновление React state
+                         |
+              Панель отображает данные этажа
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Функциональность
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- 3D-модель здания из 5 этажей на базе Three.js WebGL
+- Окраска этажей по статусу строительства из mock API-сервиса
+- Raycasting для точного выбора этажа по клику
+- Подсветка этажа при наведении и тултип с названием и статусом
+- Плавная анимация камеры (lerp) при выборе этажа
+- OrbitControls — вращение, масштабирование и панорамирование мышью
+- Плиты-перекрытия между этажами для реалистичного вида здания
+- Фильтр по статусу — кнопки для подсветки нужных этажей
+- Легенда статусов на сцене
+- Панель с данными этажа и shimmer-скелетоном во время загрузки
+- Адаптивный canvas через ResizeObserver
+- CI/CD — автоматический деплой на GitHub Pages при каждом пуше в main
+
+---
+
+## Стек технологий
+
+| Слой       | Технологии                              |
+|------------|-----------------------------------------|
+| UI         | React 18, TypeScript                    |
+| 3D         | Three.js, OrbitControls, Raycaster      |
+| Сборка     | Vite                                    |
+| CI/CD      | GitHub Actions, GitHub Pages            |
+
+---
+
+## Архитектура
+
 ```
+src/
+  app/
+    App.tsx                      # Корневой компонент, глобальное состояние
+  features/
+    building-3d/
+      ThreeScene.tsx             # Three.js сцена, камера, raycasting, controls
+      StatusLegend.tsx           # Компонент легенды статусов
+      StatusFilter.tsx           # Компонент кнопок-фильтров
+    building-info/
+      BuildingInfoPanel.tsx      # Панель данных этажа с lazy loading
+      floorService.ts            # Mock API, типы и маппинги статусов
+```
+
+Движок визуализации и UI намеренно разделены:
+
+- `ThreeScene` управляет WebGL-контекстом и передаёт события в React через коллбэки
+- `App` управляет состоянием и передаёт данные в UI-компоненты
+- `floorService` — слой данных, который можно заменить реальным REST API без изменений в UI
+
+---
+
+## Запуск
+
+```bash
+npm install
+npm run dev
+```
+
+Сборка для продакшена:
+
+```bash
+npm run build
+```
+
+---
+
+## История веток
+
+| Ветка                       | Описание                                              |
+|-----------------------------|-------------------------------------------------------|
+| `feature/enhance-3d-viewer` | Mock API, статусные цвета, hover-тултип, lerp камеры  |
+| `feature/status-legend`     | Легенда статусов поверх сцены                         |
+| `feature/orbit-controls`    | OrbitControls с затуханием                            |
+| `feature/floor-slabs`       | Плиты-перекрытия между этажами                        |
+| `feature/status-filter`     | Кнопки-фильтры по статусу                             |
