@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react"
 import * as THREE from "three"
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { mockFloors, STATUS_COLORS } from "../building-info/floorService"
 
 type Props = {
@@ -36,6 +37,14 @@ export default function ThreeScene({ onFloorSelect }: Props) {
       container.clientHeight || container.offsetHeight,
     )
     container.appendChild(renderer.domElement)
+
+    const controls = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping = true
+    controls.dampingFactor = 0.08
+    controls.minDistance = 5
+    controls.maxDistance = 30
+    controls.target.set(0, 4, 0)
+    controls.update()
 
     const resizeObserver = new ResizeObserver(() => {
       const w = container.clientWidth
@@ -91,6 +100,7 @@ export default function ThreeScene({ onFloorSelect }: Props) {
       cameraTargetPos.set(7, floorY + 4, 12)
       cameraLookAt.set(0, floorY + 1, 0)
       isAnimatingCamera = true
+      controls.target.set(0, floorY + 1, 0)
     }
 
     function onClick(event: MouseEvent) {
@@ -163,6 +173,7 @@ export default function ThreeScene({ onFloorSelect }: Props) {
         }
       }
 
+      controls.update()
       renderer.render(scene, camera)
     }
 
@@ -172,6 +183,7 @@ export default function ThreeScene({ onFloorSelect }: Props) {
       renderer.domElement.removeEventListener("click", onClick)
       renderer.domElement.removeEventListener("mousemove", onMouseMove)
       resizeObserver.disconnect()
+      controls.dispose()
       renderer.dispose()
       scene.clear()
       container.removeChild(renderer.domElement)
