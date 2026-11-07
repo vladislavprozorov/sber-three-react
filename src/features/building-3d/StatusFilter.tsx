@@ -1,62 +1,44 @@
-import { STATUS_COLORS, STATUS_LABELS, type FloorStatus } from "../building-info/floorService"
-
-type FilterValue = FloorStatus | "all"
+import type { CSSProperties } from "react"
+import { FLOOR_STATUSES, FLOORS, STATUS_COLORS, STATUS_LABELS } from "../building-info/floorService"
+import type { FilterValue } from "./BuildingScene"
 
 type Props = {
   activeFilter: FilterValue
   onChange: (filter: FilterValue) => void
 }
 
-const FILTERS: { value: FilterValue; label: string }[] = [
-  { value: "all",      label: "Все" },
-  { value: "ready",    label: STATUS_LABELS.ready },
-  { value: "building", label: STATUS_LABELS.building },
-  { value: "problem",  label: STATUS_LABELS.problem },
+const FILTERS: { value: FilterValue; label: string; color: string; count: number }[] = [
+  { value: "all", label: "Все", color: "#cbd5e1", count: FLOORS.length },
+  ...FLOOR_STATUSES.map((status) => ({
+    value: status,
+    label: STATUS_LABELS[status],
+    color: STATUS_COLORS[status],
+    count: FLOORS.filter((f) => f.status === status).length,
+  })),
 ]
 
 export default function StatusFilter({ activeFilter, onChange }: Props) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: 16,
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        gap: 8,
-        zIndex: 10,
-      }}
-    >
-      {FILTERS.map(({ value, label }) => {
+    <div className="status-filter glass" role="radiogroup" aria-label="Фильтр по статусу">
+      {FILTERS.map(({ value, label, color, count }) => {
         const isActive = activeFilter === value
-        const color = value === "all" ? "#aaa" : STATUS_COLORS[value as FloorStatus]
-
         return (
           <button
             key={value}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            className="chip"
+            data-active={isActive}
+            style={{ "--chip-color": color } as CSSProperties}
             onClick={() => onChange(value)}
-            style={{
-              padding: "5px 10px",
-              borderRadius: 20,
-              border: `1.5px solid ${isActive ? color : "rgba(255,255,255,0.15)"}`,
-              background: isActive ? `${color}22` : "rgba(0,0,0,0.55)",
-              color: isActive ? color : "#999",
-              fontSize: 12,
-              fontWeight: isActive ? 600 : 400,
-              cursor: "pointer",
-              backdropFilter: "blur(6px)",
-              transition: "all 0.18s ease",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              touchAction: "manipulation",
-            }}
           >
+            {value !== "all" && <span className="dot" style={{ background: color }} />}
             {label}
+            <span className="chip-count">{count}</span>
           </button>
         )
       })}
     </div>
   )
 }
-
-export type { FilterValue }

@@ -1,246 +1,82 @@
-import { useRef, useEffect } from "react"
-import * as THREE from "three"
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { mockFloors, STATUS_COLORS } from "../building-info/floorService"
-import type { FilterValue } from "./StatusFilter"
+import { useEffect, useRef } from "react"
+import { BuildingScene, type FilterValue } from "./BuildingScene"
+import { FLOORS, STATUS_COLORS, STATUS_LABELS } from "../building-info/floorService"
 
 type Props = {
-  onFloorSelect?: (floorIndex: number) => void
-  activeFilter?: FilterValue
-  isMobile?: boolean
+  selectedFloor: number | null
+  hoveredFloor: number | null
+  activeFilter: FilterValue
+  onFloorSelect: (floorIndex: number) => void
+  onFloorHover: (floorIndex: number | null) => void
+  /** Увеличивается при каждом запросе «вернуть общий вид». */
+  resetToken: number
 }
 
-export default function ThreeScene({ onFloorSelect, activeFilter = "all", isMobile = false }: Props) {
+export default function ThreeScene({
+  selectedFloor,
+  hoveredFloor,
+  activeFilter,
+  onFloorSelect,
+  onFloorHover,
+  resetToken,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const tooltipRef = useRef<HTMLDivElement | null>(null)
-  const floorsRef = useRef<THREE.Mesh[]>([])
-  const selectedIndexRef = useRef<number | null>(null)
+  const sceneRef = useRef<BuildingScene | null>(null)
+  const lastHoverRef = useRef<number | null>(null)
 
+  // Создаём сцену один раз
   useEffect(() => {
-    if (!containerRef.current) return
     const container = containerRef.current
-
-    const scene = new THREE.Scene()
-    scene.background = new THREE.Color("#1e1e1e")
-
-    const camera = new THREE.PerspectiveCamera(
-      60,
-      container.clientWidth / container.clientHeight || 1,
-      0.1,
-      1000,
-    )
-    const initCamZ = isMobile ? 18 : 10
-    camera.position.set(0, 5, initCamZ)
-    camera.lookAt(0, 4, 0)
-
-    const cameraTargetPos = new THREE.Vector3(0, 5, initCamZ)
-    const cameraLookAt = new THREE.Vector3(0, 4, 0)
-    let isAnimatingCamera = false
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
-    renderer.setSize(
-      container.clientWidth || container.offsetWidth,
-      container.clientHeight || container.offsetHeight,
-    )
-    container.appendChild(renderer.domElement)
-
-    const controls = new OrbitControls(camera, renderer.domElement)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.08
-    controls.minDistance = 5
-    controls.maxDistance = 30
-    controls.target.set(0, 4, 0)
-    controls.update()
-
-    const resizeObserver = new ResizeObserver(() => {
-      const w = container.clientWidth
-      const h = container.clientHeight
-      if (w === 0 || h === 0) return
-      camera.aspect = w / h
-      camera.updateProjectionMatrix()
-      renderer.setSize(w, h)
-    })
-    resizeObserver.observe(container)
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1)
-    dirLight.position.set(10, 10, 10)
-    scene.add(dirLight)
-
-    const raycaster = new THREE.Raycaster()
-    const mouse = new THREE.Vector2()
-
-    const FLOOR_HEIGHT = 1.7
-    const FLOOR_STEP = 2.0
-    const floorGeometry = new THREE.BoxGeometry(4, FLOOR_HEIGHT, 4)
-
-    const slabGeometry = new THREE.BoxGeometry(4.3, 0.25, 4.3)
-    const slabMaterial = new THREE.MeshStandardMaterial({ color: "#555560" })
-
-    const floors: THREE.Mesh[] = []
-    floorsRef.current = floors
-    let selectedIndex: number | null = null
-    let hoveredMesh: THREE.Mesh | null = null
-
-    for (let i = 0; i < mockFloors.length; i++) {
-      const data = mockFloors[i]
-      const mat = new THREE.MeshStandardMaterial({
-        color: STATUS_COLORS[data.status],
-        transparent: true,
-        opacity: 1,
-      })
-      const floor = new THREE.Mesh(floorGeometry, mat)
-      floor.position.y = i * FLOOR_STEP + FLOOR_HEIGHT / 2
-      floor.userData.floorIndex = i
-      floors.push(floor)
-      scene.add(floor)
-
-      const slab = new THREE.Mesh(slabGeometry, slabMaterial)
-      slab.position.y = i * FLOOR_STEP + FLOOR_HEIGHT + 0.125
-      scene.add(slab)
-    }
-
-    function refreshColors() {
-      floors.forEach((floor) => {
-        const idx = floor.userData.floorIndex as number
-        const base = STATUS_COLORS[mockFloors[idx].status]
-        let targetColor: THREE.ColorRepresentation = base
-
-        if (idx === selectedIndex) {
-          selectedIndexRef.current = selectedIndex
-          targetColor = "#ffffff"
-        } else if (floor === hoveredMesh) {
-          const c = new THREE.Color(base)
-          c.lerp(new THREE.Color("#ffffff"), 0.3)
-          targetColor = c
-        }
-        ;(floor.material as THREE.MeshStandardMaterial).color.set(targetColor)
-      })
-    }
-
-    function moveCameraToFloor(floorY: number) {
-      cameraTargetPos.set(7, floorY + 3, 12)
-      cameraLookAt.set(0, floorY + 0.5, 0)
-      isAnimatingCamera = true
-      controls.target.set(0, floorY + 0.5, 0)
-    }
-
-    function onClick(event: MouseEvent) {
-      const rect = renderer.domElement.getBoundingClientRect()
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(mouse, camera)
-
-      const hits = raycaster.intersectObjects(floors)
-      if (hits.length > 0) {
-        const mesh = hits[0].object as THREE.Mesh
-        selectedIndex = mesh.userData.floorIndex as number
-        refreshColors()
-        moveCameraToFloor(mesh.position.y)
-        onFloorSelect?.(selectedIndex)
-      }
-    }
-
-    function onMouseMove(event: MouseEvent) {
-      const rect = renderer.domElement.getBoundingClientRect()
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(mouse, camera)
-
-      const hits = raycaster.intersectObjects(floors)
-      const tooltip = tooltipRef.current
-
-      if (hits.length > 0) {
-        const mesh = hits[0].object as THREE.Mesh
-        if (hoveredMesh !== mesh) {
-          hoveredMesh = mesh
-          refreshColors()
-        }
-        if (tooltip) {
-          const idx = mesh.userData.floorIndex as number
-          const data = mockFloors[idx]
-          const statusLabel = data.status === "ready" ? "Готов" : data.status === "building" ? "Строится" : "Проблема"
-          tooltip.textContent = `${data.label} — ${statusLabel}`
-          tooltip.style.left = `${event.clientX - rect.left + 14}px`
-          tooltip.style.top = `${event.clientY - rect.top - 32}px`
-          tooltip.style.opacity = "1"
-        }
-        container.style.cursor = "pointer"
-      } else {
-        if (hoveredMesh) {
-          hoveredMesh = null
-          refreshColors()
-        }
-        if (tooltip) tooltip.style.opacity = "0"
-        container.style.cursor = "default"
-      }
-    }
-
-    renderer.domElement.addEventListener("click", onClick)
-    renderer.domElement.addEventListener("mousemove", onMouseMove)
-
-    function animate() {
-      requestAnimationFrame(animate)
-
-      if (isAnimatingCamera) {
-        camera.position.lerp(cameraTargetPos, 0.06)
-        const currentLook = new THREE.Vector3()
-        camera.getWorldDirection(currentLook)
-        currentLook.multiplyScalar(10).add(camera.position)
-        currentLook.lerp(cameraLookAt, 0.06)
-        camera.lookAt(currentLook)
-
-        if (camera.position.distanceTo(cameraTargetPos) < 0.05) {
-          isAnimatingCamera = false
-        }
-      }
-
-      controls.update()
-      renderer.render(scene, camera)
-    }
-
-    animate()
-
+    if (!container) return
+    const scene = new BuildingScene(container)
+    sceneRef.current = scene
     return () => {
-      renderer.domElement.removeEventListener("click", onClick)
-      renderer.domElement.removeEventListener("mousemove", onMouseMove)
-      resizeObserver.disconnect()
-      controls.dispose()
-      renderer.dispose()
-      scene.clear()
-      container.removeChild(renderer.domElement)
+      scene.dispose()
+      sceneRef.current = null
     }
   }, [])
 
+  // Актуальные коллбэки без пересоздания сцены
   useEffect(() => {
-    floorsRef.current.forEach((floor) => {
-      const idx = floor.userData.floorIndex as number
-      const status = mockFloors[idx].status
-      const mat = floor.material as THREE.MeshStandardMaterial
-      const hidden = activeFilter !== "all" && status !== activeFilter
-      mat.opacity = hidden ? 0.12 : 1
-      floor.visible = true 
+    sceneRef.current?.setCallbacks({
+      onSelect: onFloorSelect,
+      onHover: (index, clientX, clientY) => {
+        const tooltip = tooltipRef.current
+        const container = containerRef.current
+        if (tooltip && container) {
+          if (index === null) {
+            tooltip.dataset.visible = "false"
+          } else {
+            const floor = FLOORS[index]
+            const rect = container.getBoundingClientRect()
+            tooltip.innerHTML = ""
+            const dot = document.createElement("span")
+            dot.className = "dot"
+            dot.style.background = STATUS_COLORS[floor.status]
+            tooltip.append(dot, `${floor.label} · ${STATUS_LABELS[floor.status]} · ${floor.progress}%`)
+            tooltip.style.transform = `translate(${clientX - rect.left + 14}px, ${clientY - rect.top - 36}px)`
+            tooltip.dataset.visible = "true"
+          }
+        }
+        if (lastHoverRef.current !== index) {
+          lastHoverRef.current = index
+          onFloorHover(index)
+        }
+      },
     })
-  }, [activeFilter])
+  }, [onFloorSelect, onFloorHover])
+
+  useEffect(() => sceneRef.current?.setSelected(selectedFloor), [selectedFloor])
+  useEffect(() => sceneRef.current?.setHovered(hoveredFloor), [hoveredFloor])
+  useEffect(() => sceneRef.current?.setFilter(activeFilter), [activeFilter])
+  useEffect(() => {
+    if (resetToken > 0) sceneRef.current?.resetView()
+  }, [resetToken])
 
   return (
-    <div ref={containerRef} style={{ position: "absolute", inset: 0 }}>
-      <div
-        ref={tooltipRef}
-        style={{
-          position: "absolute",
-          pointerEvents: "none",
-          opacity: 0,
-          transition: "opacity 0.15s",
-          background: "rgba(0,0,0,0.78)",
-          color: "#fff",
-          padding: "4px 10px",
-          borderRadius: 6,
-          fontSize: 13,
-          whiteSpace: "nowrap",
-          zIndex: 10,
-        }}
-      />
+    <div ref={containerRef} className="scene-canvas">
+      <div ref={tooltipRef} className="scene-tooltip" data-visible="false" role="tooltip" />
     </div>
   )
 }

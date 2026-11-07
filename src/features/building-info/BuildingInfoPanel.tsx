@@ -1,139 +1,233 @@
-import { useEffect, useState } from "react"
-import { fetchFloorData, STATUS_COLORS, STATUS_LABELS, type FloorData } from "./floorService"
+import type { CSSProperties, ReactNode } from "react"
+import {
+  FLOOR_STATUSES,
+  FLOORS,
+  PROJECT_NAME,
+  STATUS_COLORS,
+  STATUS_LABELS,
+  getBuildingSummary,
+  type FloorStatus,
+} from "./floorService"
+import { useFloorDetails } from "./hooks/useFloorDetails"
 
 type Props = {
   selectedFloor: number | null
-  isMobile?: boolean
+  hoveredFloor: number | null
+  activeFilter: FloorStatus | "all"
+  onSelect: (floorIndex: number | null) => void
+  onHover: (floorIndex: number | null) => void
 }
 
-function SkeletonLine({ width = "100%" }: { width?: string }) {
+const summary = getBuildingSummary()
+const dateFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+const numberFormat = new Intl.NumberFormat("ru-RU")
+
+export default function BuildingInfoPanel({ selectedFloor, hoveredFloor, activeFilter, onSelect, onHover }: Props) {
+  // Сверху вниз, как в реальном здании
+  const floorsTopDown = [...FLOORS].reverse()
+
   return (
-    <div
-      style={{
-        height: 16,
-        width,
-        borderRadius: 4,
-        background: "linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%)",
-        backgroundSize: "200% 100%",
-        animation: "shimmer 1.2s infinite",
-        marginBottom: 10,
-      }}
-    />
+    <aside className="panel">
+      <header className="panel-header">
+        <p className="eyebrow">Объект строительства</p>
+        <h1 className="panel-title">{PROJECT_NAME}</h1>
+
+        <div className="summary">
+          <ProgressRing value={summary.totalProgress} />
+          <div className="summary-stats">
+            {FLOOR_STATUSES.map((status) => (
+              <div key={status} className="summary-stat">
+                <span className="dot" style={{ background: STATUS_COLORS[status] }} />
+                <span className="muted">{STATUS_LABELS[status]}</span>
+                <strong>{summary.counts[status]}</strong>
+              </div>
+            ))}
+            <div className="summary-stat">
+              <span className="muted">Площадь</span>
+              <strong>{numberFormat.format(summary.totalArea)} м²</strong>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {selectedFloor !== null && (
+        <FloorDetailsCard
+          key={selectedFloor}
+          floorIndex={selectedFloor}
+          onClose={() => onSelect(null)}
+          onPrev={selectedFloor > 0 ? () => onSelect(selectedFloor - 1) : undefined}
+          onNext={selectedFloor < FLOORS.length - 1 ? () => onSelect(selectedFloor + 1) : undefined}
+        />
+      )}
+
+      <section className="floor-list-section">
+        <h2 className="section-title">Этажи</h2>
+        <ul className="floor-list" onMouseLeave={() => onHover(null)}>
+          {floorsTopDown.map((floor) => {
+            const dimmed = activeFilter !== "all" && floor.status !== activeFilter
+            const color = STATUS_COLORS[floor.status]
+            return (
+              <li key={floor.floorIndex}>
+                <button
+                  type="button"
+                  className="floor-row"
+                  data-selected={floor.floorIndex === selectedFloor}
+                  data-hovered={floor.floorIndex === hoveredFloor}
+                  data-dimmed={dimmed}
+                  style={{ "--status-color": color } as CSSProperties}
+                  onClick={() => onSelect(floor.floorIndex === selectedFloor ? null : floor.floorIndex)}
+                  onMouseEnter={() => onHover(floor.floorIndex)}
+                  onFocus={() => onHover(floor.floorIndex)}
+                  onBlur={() => onHover(null)}
+                >
+                  <span className="floor-num">{floor.floorIndex + 1}</span>
+                  <span className="floor-row-body">
+                    <span className="floor-row-top">
+                      <span>{floor.label}</span>
+                      <span className="floor-row-status" style={{ color }}>
+                        {STATUS_LABELS[floor.status]}
+                      </span>
+                    </span>
+                    <ProgressBar value={floor.progress} color={color} />
+                  </span>
+                  <span className="floor-row-pct">{floor.progress}%</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+    </aside>
   )
 }
 
-export default function BuildingInfoPanel({ selectedFloor, isMobile = false }: Props) {
-  const [data, setData] = useState<FloorData | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (selectedFloor === null) {
-      setData(null)
-      return
-    }
-    setLoading(true)
-    setData(null)
-    fetchFloorData(selectedFloor).then((result) => {
-      setData(result)
-      setLoading(false)
-    })
-  }, [selectedFloor])
-
-  const statusColor = data ? STATUS_COLORS[data.status] : "#888"
+function FloorDetailsCard({
+  floorIndex,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  floorIndex: number
+  onClose: () => void
+  onPrev?: () => void
+  onNext?: () => void
+}) {
+  const { data, loading, error } = useFloorDetails(floorIndex)
+  const floor = FLOORS[floorIndex]
+  const color = STATUS_COLORS[floor.status]
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        padding: isMobile ? "12px 16px" : 24,
-        background: "#111",
-        color: "white",
-        fontFamily: "sans-serif",
-        borderLeft: isMobile ? "none" : "1px solid #222",
-        borderTop: isMobile ? "1px solid #222" : "none",
-        boxSizing: "border-box",
-      }}
-    >
-      <style>{`
-        @keyframes shimmer {
-          0%   { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
+    <section className="details" style={{ "--status-color": color } as CSSProperties} aria-live="polite">
+      <div className="details-head">
+        <div>
+          <h2 className="details-title">{floor.label}</h2>
+          <span className="badge">
+            <span className="dot" style={{ background: color }} />
+            {STATUS_LABELS[floor.status]}
+          </span>
+        </div>
+        <div className="details-nav">
+          <IconButton label="Этаж ниже" onClick={onPrev}>↓</IconButton>
+          <IconButton label="Этаж выше" onClick={onNext}>↑</IconButton>
+          <IconButton label="Закрыть" onClick={onClose}>✕</IconButton>
+        </div>
+      </div>
 
-      {selectedFloor === null && (
-        <p style={{ color: "#888", marginTop: 0, fontSize: isMobile ? 13 : 14 }}>
-          Нажмите на этаж
-        </p>
-      )}
+      <div className="details-progress">
+        <div className="details-progress-label">
+          <span className="muted">Готовность</span>
+          <strong>{floor.progress}%</strong>
+        </div>
+        <ProgressBar value={floor.progress} color={color} large />
+      </div>
+
+      {error && <p className="error">{error}</p>}
 
       {loading && (
-        <>
-          <SkeletonLine width="60%" />
-          <SkeletonLine width="80%" />
-          <SkeletonLine width="70%" />
-          <SkeletonLine width="50%" />
-          <SkeletonLine width="65%" />
-        </>
-      )}
-
-      {!loading && data && (
-        <>
-          <h2 style={{ margin: isMobile ? "0 0 8px" : "0 0 16px", fontSize: isMobile ? 15 : 18 }}>{data.label}</h2>
-
-          <div style={{ marginBottom: isMobile ? 6 : 10, display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                display: "inline-block",
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                background: statusColor,
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ color: statusColor, fontWeight: 600 }}>
-              {STATUS_LABELS[data.status]}
-            </span>
-          </div>
-
-          <Row label="Прогресс">
-            <div style={{ background: "#222", borderRadius: 4, overflow: "hidden", height: 8, flex: 1 }}>
-              <div
-                style={{
-                  width: `${data.progress}%`,
-                  height: "100%",
-                  background: statusColor,
-                  transition: "width 0.5s ease",
-                }}
-              />
+        <div className="details-grid">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="stat">
+              <div className="skeleton" style={{ width: "50%" }} />
+              <div className="skeleton" style={{ width: "80%", height: 18 }} />
             </div>
-            <span style={{ marginLeft: 8, fontSize: 12, color: "#aaa" }}>{data.progress}%</span>
-          </Row>
+          ))}
+        </div>
+      )}
 
-          <InfoRow label="Площадь"    value={`${data.area} м²`} />
-          <InfoRow label="Подрядчик"  value={data.contractor} />
+      {data && (
+        <>
+          <div className="details-grid fade-in">
+            <Stat label="Площадь" value={`${numberFormat.format(data.area)} м²`} />
+            <Stat label="Рабочих на объекте" value={String(data.workers)} />
+            <Stat label="Подрядчик" value={data.contractor} />
+            <Stat label="Срок сдачи" value={dateFormat.format(new Date(`${data.deadline}T00:00:00`))} />
+          </div>
+          {data.note && (
+            <p className="note fade-in">
+              <span aria-hidden="true">⚠</span> {data.note}
+            </p>
+          )}
         </>
       )}
+    </section>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="stat">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value">{value}</div>
     </div>
   )
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function IconButton({ label, onClick, children }: { label: string; onClick?: () => void; children: ReactNode }) {
   return (
-    <p style={{ margin: "8px 0", fontSize: 14, color: "#ccc" }}>
-      <span style={{ color: "#666" }}>{label}: </span>
-      {value}
-    </p>
+    <button type="button" className="icon-btn" aria-label={label} title={label} onClick={onClick} disabled={!onClick}>
+      {children}
+    </button>
   )
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function ProgressBar({ value, color, large = false }: { value: number; color: string; large?: boolean }) {
   return (
-    <div style={{ margin: "8px 0", fontSize: 14, color: "#ccc" }}>
-      <div style={{ color: "#666", marginBottom: 4 }}>{label}</div>
-      <div style={{ display: "flex", alignItems: "center" }}>{children}</div>
+    <span className="progress" data-large={large} role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}>
+      <span className="progress-fill" style={{ width: `${value}%`, background: color }} />
+    </span>
+  )
+}
+
+function ProgressRing({ value }: { value: number }) {
+  const r = 34
+  const c = 2 * Math.PI * r
+  return (
+    <div className="ring" role="img" aria-label={`Общая готовность ${value}%`}>
+      <svg viewBox="0 0 80 80" width="88" height="88">
+        <defs>
+          <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#22c55e" />
+            <stop offset="100%" stopColor="#38bdf8" />
+          </linearGradient>
+        </defs>
+        <circle cx="40" cy="40" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="7" />
+        <circle
+          cx="40"
+          cy="40"
+          r={r}
+          fill="none"
+          stroke="url(#ring-grad)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - value / 100)}
+          transform="rotate(-90 40 40)"
+        />
+      </svg>
+      <div className="ring-label">
+        <strong>{value}%</strong>
+        <span>готово</span>
+      </div>
     </div>
   )
 }

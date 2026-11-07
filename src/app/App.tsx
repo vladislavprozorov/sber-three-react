@@ -1,48 +1,47 @@
 import ThreeScene from "../features/building-3d/ThreeScene"
-import BuildingInfoPanel from "../features/building-info/BuildingInfoPanel"
-import StatusLegend from "../features/building-3d/StatusLegend"
 import StatusFilter from "../features/building-3d/StatusFilter"
+import StatusLegend from "../features/building-3d/StatusLegend"
+import BuildingInfoPanel from "../features/building-info/BuildingInfoPanel"
 import { useBuildingViewer } from "./hooks/useBuildingViewer"
-import { useIsMobile } from "../shared/hooks/useIsMobile"
 
 export default function App() {
-  const { selectedFloor, activeFilter, selectFloor, setFilter } = useBuildingViewer()
-  const isMobile = useIsMobile()
+  const viewer = useBuildingViewer()
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        height: "100vh",
-        overflow: "hidden",
-        background: "#1e1e1e",
-      }}
-    >
-      {/* 3D сцена */}
-      <div
-        style={{
-          flex: isMobile ? "none" : 1,
-          position: "relative",
-          height: isMobile ? "65vh" : "100%",
-          flexShrink: 0,
-        }}
-      >
-        <ThreeScene onFloorSelect={selectFloor} activeFilter={activeFilter} isMobile={isMobile} />
-        <StatusLegend isMobile={isMobile} />
-        <StatusFilter activeFilter={activeFilter} onChange={setFilter} />
-      </div>
+    <div className="layout">
+      <main className="scene">
+        <ThreeScene
+          selectedFloor={viewer.selectedFloor}
+          hoveredFloor={viewer.hoveredFloor}
+          activeFilter={viewer.activeFilter}
+          onFloorSelect={viewer.toggleFloor}
+          onFloorHover={viewer.hoverFloor}
+          resetToken={viewer.resetToken}
+        />
+        <StatusFilter activeFilter={viewer.activeFilter} onChange={viewer.setFilter} />
+        <button type="button" className="reset-btn glass" onClick={viewer.resetView} title="Общий вид (Esc)" aria-label="Общий вид">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path
+              d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span>Общий вид</span>
+        </button>
+        <StatusLegend />
+      </main>
 
-      {/* Панель информации */}
-      <div
-        style={{
-          flex: isMobile ? "none" : "0 0 300px",
-          height: isMobile ? "35vh" : "100%",
-          overflowY: "auto",
-        }}
-      >
-        <BuildingInfoPanel selectedFloor={selectedFloor} isMobile={isMobile} />
-      </div>
+      <BuildingInfoPanel
+        selectedFloor={viewer.selectedFloor}
+        hoveredFloor={viewer.hoveredFloor}
+        activeFilter={viewer.activeFilter}
+        onSelect={viewer.selectFloor}
+        onHover={viewer.hoverFloor}
+      />
     </div>
   )
 }

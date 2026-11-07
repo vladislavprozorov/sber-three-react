@@ -5,4 +5,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/sber-three-react/',
+  build: {
+    rollupOptions: {
+      output: {
+        // three.js редко меняется — отдельный чанк лучше кэшируется браузером
+        manualChunks: { three: ['three'] },
+      },
+    },
+    chunkSizeWarningLimit: 700,
+  },
 })
