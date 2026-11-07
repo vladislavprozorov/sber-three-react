@@ -1,30 +1,45 @@
-import type { CSSProperties, ReactNode } from "react"
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react"
+import FloorPlan from "./FloorPlan"
 import {
   FLOOR_STATUSES,
-  FLOORS,
   PROJECT_NAME,
   STATUS_COLORS,
   STATUS_LABELS,
   getBuildingSummary,
+  type FloorSnapshot,
   type FloorStatus,
 } from "./floorService"
 import { useFloorDetails } from "./hooks/useFloorDetails"
 
 type Props = {
+  floors: FloorSnapshot[]
+  isLive: boolean
   selectedFloor: number | null
+  selectedRoom: number | null
   hoveredFloor: number | null
   activeFilter: FloorStatus | "all"
   onSelect: (floorIndex: number | null) => void
+  onSelectRoom: (floorIndex: number, roomIndex: number | null) => void
   onHover: (floorIndex: number | null) => void
 }
 
-const summary = getBuildingSummary()
 const dateFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 const numberFormat = new Intl.NumberFormat("ru-RU")
 
-export default function BuildingInfoPanel({ selectedFloor, hoveredFloor, activeFilter, onSelect, onHover }: Props) {
+export default function BuildingInfoPanel({
+  floors,
+  isLive,
+  selectedFloor,
+  selectedRoom,
+  hoveredFloor,
+  activeFilter,
+  onSelect,
+  onSelectRoom,
+  onHover,
+}: Props) {
+  const summary = getBuildingSummary(floors)
   // Сверху вниз, как в реальном здании
-  const floorsTopDown = [...FLOORS].reverse()
+  const floorsTopDown = [...floors].reverse()
 
   return (
     <aside className="panel">
@@ -35,7 +50,7 @@ export default function BuildingInfoPanel({ selectedFloor, hoveredFloor, activeF
         <div className="summary">
           <ProgressRing value={summary.totalProgress} />
           <div className="summary-stats">
-            {FLOOR_STATUSES.map((status) => (
+            {FLOOR_STATUSES.filter((status) => status !== "planned" || summary.counts.planned > 0).map((status) => (
               <div key={status} className="summary-stat">
                 <span className="dot" style={{ background: STATUS_COLORS[status] }} />
                 <span className="muted">{STATUS_LABELS[status]}</span>
@@ -53,10 +68,13 @@ export default function BuildingInfoPanel({ selectedFloor, hoveredFloor, activeF
       {selectedFloor !== null && (
         <FloorDetailsCard
           key={selectedFloor}
-          floorIndex={selectedFloor}
+          floor={floors[selectedFloor]}
+          isLive={isLive}
+          selectedRoom={selectedRoom}
+          onSelectRoom={(room) => onSelectRoom(selectedFloor, room)}
           onClose={() => onSelect(null)}
           onPrev={selectedFloor > 0 ? () => onSelect(selectedFloor - 1) : undefined}
-          onNext={selectedFloor < FLOORS.length - 1 ? () => onSelect(selectedFloor + 1) : undefined}
+          onNext={selectedFloor < floors.length - 1 ? () => onSelect(selectedFloor + 1) : undefined}
         />
       )}
 
@@ -102,22 +120,33 @@ export default function BuildingInfoPanel({ selectedFloor, hoveredFloor, activeF
 }
 
 function FloorDetailsCard({
-  floorIndex,
+  floor,
+  isLive,
+  selectedRoom,
+  onSelectRoom,
   onClose,
   onPrev,
   onNext,
 }: {
-  floorIndex: number
+  floor: FloorSnapshot
+  isLive: boolean
+  selectedRoom: number | null
+  onSelectRoom: (room: number | null) => void
   onClose: () => void
   onPrev?: () => void
   onNext?: () => void
 }) {
-  const { data, loading, error } = useFloorDetails(floorIndex)
-  const floor = FLOORS[floorIndex]
+  const { data, loading, error } = useFloorDetails(floor.floorIndex)
   const color = STATUS_COLORS[floor.status]
+  const cardRef = useRef<HTMLElement | null>(null)
+
+  // Карточка монтируется заново для каждого этажа — прокручиваем панель к ней
+  useEffect(() => {
+    cardRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })
+  }, [])
 
   return (
-    <section className="details" style={{ "--status-color": color } as CSSProperties} aria-live="polite">
+    <section ref={cardRef} className="details" style={{ "--status-color": color } as CSSProperties} aria-live="polite">
       <div className="details-head">
         <div>
           <h2 className="details-title">{floor.label}</h2>
@@ -162,13 +191,16 @@ function FloorDetailsCard({
             <Stat label="Подрядчик" value={data.contractor} />
             <Stat label="Срок сдачи" value={dateFormat.format(new Date(`${data.deadline}T00:00:00`))} />
           </div>
-          {data.note && (
+          {data.note && isLive && floor.status === "problem" && (
             <p className="note fade-in">
               <span aria-hidden="true">⚠</span> {data.note}
             </p>
           )}
         </>
       )}
+
+      <h3 className="section-title plan-title">Планировка</h3>
+      <FloorPlan rooms={floor.rooms} selectedRoom={selectedRoom} onSelect={onSelectRoom} />
     </section>
   )
 }
