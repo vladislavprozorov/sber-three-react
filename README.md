@@ -11,26 +11,50 @@
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="docs/screenshots/main.png" alt="Основной вид" width="100%"/>
+      <img src="docs/screenshots/main.jpg" alt="Общий вид" width="100%"/>
       <br/>
-      <sub>Основной вид — здание с перекрытиями</sub>
+      <sub>Общий вид — статусы этажей, сводка и таймлайн</sub>
     </td>
     <td align="center" width="50%">
-      <img src="docs/screenshots/floor-selected.png" alt="Выбранный этаж" width="100%"/>
+      <img src="docs/screenshots/timeline.jpg" alt="Таймлайн" width="100%"/>
       <br/>
-      <sub>Выбранный этаж — панель с данными и прогрессом</sub>
+      <sub>Таймлайн — здание на март 2026 года</sub>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="docs/screenshots/status-filter.png" alt="Фильтр по статусу" width="100%"/>
+      <img src="docs/screenshots/floor-plan.jpg" alt="План этажа" width="100%"/>
       <br/>
-      <sub>Фильтр по статусу — подсветка нужных этажей</sub>
+      <sub>Раскрытый этаж — планировка квартир в 3D и на плане</sub>
     </td>
     <td align="center" width="50%">
+      <img src="docs/screenshots/apartment.jpg" alt="Квартира" width="100%"/>
+      <br/>
+      <sub>Квартира изнутри — комнаты, мебель, экспликация</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/kitchen.jpg" alt="Кухня" width="100%"/>
+      <br/>
+      <sub>Кухня крупным планом — гарнитур, плита, мойка, обеденная группа</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/bathroom.jpg" alt="Санузел" width="100%"/>
+      <br/>
+      <sub>Санузел — ванна, раковина с зеркалом, плитка</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="70%">
+      <img src="docs/screenshots/construction.jpg" alt="Стройка" width="100%"/>
+      <br/>
+      <sub>Проблемная квартира — стены в процессе, стройматериалы, конусы</sub>
+    </td>
+    <td align="center" width="30%">
       <img src="docs/screenshots/mobile.jpg" alt="Мобильный вид" width="100%"/>
       <br/>
-      <sub>Мобильный вид — вертикальный layout</sub>
+      <sub>Мобильный вид</sub>
     </td>
   </tr>
 </table>
