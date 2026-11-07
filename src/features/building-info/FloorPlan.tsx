@@ -4,7 +4,9 @@ import { FLOOR_FOOTPRINT, STATUS_COLORS, STATUS_LABELS, type RoomSnapshot } from
 type Props = {
   rooms: RoomSnapshot[]
   selectedRoom: number | null
+  focusedArea: number | null
   onSelect: (roomIndex: number | null) => void
+  onFocusArea: (areaIndex: number | null) => void
 }
 
 const PAD = 0.12
@@ -12,7 +14,7 @@ const W = FLOOR_FOOTPRINT.width
 const D = FLOOR_FOOTPRINT.depth
 
 /** Интерактивная 2D-планировка этажа — зеркало раскрытого этажа в 3D. */
-export default function FloorPlan({ rooms, selectedRoom, onSelect }: Props) {
+export default function FloorPlan({ rooms, selectedRoom, focusedArea, onSelect, onFocusArea }: Props) {
   const selected = selectedRoom !== null ? rooms[selectedRoom] : null
 
   return (
@@ -73,7 +75,13 @@ export default function FloorPlan({ rooms, selectedRoom, onSelect }: Props) {
       </svg>
 
       {selected ? (
-        <ApartmentCard key={selected.number} apartment={selected} onClose={() => onSelect(null)} />
+        <ApartmentCard
+          key={selected.number}
+          apartment={selected}
+          focusedArea={focusedArea}
+          onFocusArea={onFocusArea}
+          onClose={() => onSelect(null)}
+        />
       ) : (
         <p className="plan-hint muted">Выберите квартиру, чтобы заглянуть внутрь</p>
       )}

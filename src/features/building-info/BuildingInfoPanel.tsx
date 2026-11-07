@@ -16,10 +16,12 @@ type Props = {
   isLive: boolean
   selectedFloor: number | null
   selectedRoom: number | null
+  focusedArea: number | null
   hoveredFloor: number | null
   activeFilter: FloorStatus | "all"
   onSelect: (floorIndex: number | null) => void
   onSelectRoom: (floorIndex: number, roomIndex: number | null) => void
+  onFocusArea: (areaIndex: number | null) => void
   onHover: (floorIndex: number | null) => void
 }
 
@@ -31,10 +33,12 @@ export default function BuildingInfoPanel({
   isLive,
   selectedFloor,
   selectedRoom,
+  focusedArea,
   hoveredFloor,
   activeFilter,
   onSelect,
   onSelectRoom,
+  onFocusArea,
   onHover,
 }: Props) {
   const summary = getBuildingSummary(floors)
@@ -71,7 +75,9 @@ export default function BuildingInfoPanel({
           floor={floors[selectedFloor]}
           isLive={isLive}
           selectedRoom={selectedRoom}
+          focusedArea={focusedArea}
           onSelectRoom={(room) => onSelectRoom(selectedFloor, room)}
+          onFocusArea={onFocusArea}
           onClose={() => onSelect(null)}
           onPrev={selectedFloor > 0 ? () => onSelect(selectedFloor - 1) : undefined}
           onNext={selectedFloor < floors.length - 1 ? () => onSelect(selectedFloor + 1) : undefined}
@@ -123,7 +129,9 @@ function FloorDetailsCard({
   floor,
   isLive,
   selectedRoom,
+  focusedArea,
   onSelectRoom,
+  onFocusArea,
   onClose,
   onPrev,
   onNext,
@@ -131,7 +139,9 @@ function FloorDetailsCard({
   floor: FloorSnapshot
   isLive: boolean
   selectedRoom: number | null
+  focusedArea: number | null
   onSelectRoom: (room: number | null) => void
+  onFocusArea: (area: number | null) => void
   onClose: () => void
   onPrev?: () => void
   onNext?: () => void
@@ -200,7 +210,13 @@ function FloorDetailsCard({
       )}
 
       <h3 className="section-title plan-title">Планировка</h3>
-      <FloorPlan rooms={floor.rooms} selectedRoom={selectedRoom} onSelect={onSelectRoom} />
+      <FloorPlan
+        rooms={floor.rooms}
+        selectedRoom={selectedRoom}
+        focusedArea={focusedArea}
+        onSelect={onSelectRoom}
+        onFocusArea={onFocusArea}
+      />
     </section>
   )
 }

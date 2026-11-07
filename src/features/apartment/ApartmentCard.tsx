@@ -4,6 +4,8 @@ import { getApartmentLayout, getConstructionStages, type RoomKind } from "./apar
 
 type Props = {
   apartment: RoomSnapshot
+  focusedArea: number | null
+  onFocusArea: (area: number | null) => void
   onClose: () => void
 }
 
@@ -17,7 +19,7 @@ const ROOM_FILL: Record<RoomKind, string> = {
 }
 
 /** Карточка квартиры: мини-план, экспликация помещений и этапы работ. */
-export default function ApartmentCard({ apartment, onClose }: Props) {
+export default function ApartmentCard({ apartment, focusedArea, onFocusArea, onClose }: Props) {
   const layout = getApartmentLayout(apartment)
   const stages = getConstructionStages(apartment.progress)
   const color = STATUS_COLORS[apartment.status]
@@ -52,17 +54,32 @@ export default function ApartmentCard({ apartment, onClose }: Props) {
         role="img"
         aria-label={`План квартиры ${apartment.number}`}
       >
-        {layout.rooms.map((room) => (
-          <g key={room.name + room.x0}>
+        {layout.rooms.map((room, i) => (
+          <g
+            key={room.name + room.x0}
+            className="apartment-plan-room"
+            data-focused={i === focusedArea}
+            role="button"
+            tabIndex={0}
+            aria-pressed={i === focusedArea}
+            aria-label={`Приблизить: ${room.name}`}
+            onClick={() => onFocusArea(i)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onFocusArea(i)
+              }
+            }}
+          >
             <rect
               x={room.x0}
               y={room.z0}
               width={room.x1 - room.x0}
               height={room.z1 - room.z0}
               fill={ROOM_FILL[room.kind]}
-              fillOpacity={0.16}
-              stroke="rgba(255,255,255,0.35)"
-              strokeWidth={0.06}
+              fillOpacity={i === focusedArea ? 0.45 : 0.16}
+              stroke={i === focusedArea ? ROOM_FILL[room.kind] : "rgba(255,255,255,0.35)"}
+              strokeWidth={i === focusedArea ? 0.1 : 0.06}
             />
             <text x={(room.x0 + room.x1) / 2} y={(room.z0 + room.z1) / 2} className="apartment-plan-name">
               {room.name}
@@ -93,13 +110,15 @@ export default function ApartmentCard({ apartment, onClose }: Props) {
         <text x={0} y={layout.depth / 2 + 0.32} className="apartment-plan-side">вход из коридора</text>
       </svg>
 
-      <h4 className="mini-title">Экспликация</h4>
+      <h4 className="mini-title">Экспликация · нажмите, чтобы рассмотреть</h4>
       <ul className="explication">
-        {layout.rooms.map((room) => (
+        {layout.rooms.map((room, i) => (
           <li key={room.name + room.x0}>
-            <span className="dot" style={{ background: ROOM_FILL[room.kind] }} />
-            <span>{room.name}</span>
-            <span className="muted">{room.area} м²</span>
+            <button type="button" data-focused={i === focusedArea} onClick={() => onFocusArea(i)}>
+              <span className="dot" style={{ background: ROOM_FILL[room.kind] }} />
+              <span>{room.name}</span>
+              <span className="muted">{room.area} м²</span>
+            </button>
           </li>
         ))}
       </ul>

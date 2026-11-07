@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from "react"
 import { BuildingScene, type FilterValue, type HoverTarget } from "./BuildingScene"
 import { STATUS_COLORS, STATUS_LABELS, type FloorSnapshot } from "../building-info/floorService"
+import { getApartmentLayout } from "../apartment/apartmentLayout"
 
 type Props = {
   floors: FloorSnapshot[]
   selectedFloor: number | null
   selectedRoom: number | null
+  focusedArea: number | null
   hoveredFloor: number | null
   activeFilter: FilterValue
   onFloorSelect: (floorIndex: number) => void
   onRoomSelect: (floorIndex: number, roomIndex: number) => void
+  onAreaFocus: (areaIndex: number) => void
   onFloorHover: (floorIndex: number | null) => void
   /** Увеличивается при каждом запросе «вернуть общий вид». */
   resetToken: number
@@ -17,6 +20,11 @@ type Props = {
 
 function tooltipContent(floors: FloorSnapshot[], target: HoverTarget) {
   const floor = floors[target.floor]
+  if (target.room !== null && target.area !== null) {
+    const room = floor.rooms[target.room]
+    const area = getApartmentLayout(room).rooms[target.area]
+    return { status: room.status, text: `${area.name} · ${area.area} м² — нажмите, чтобы приблизиться` }
+  }
   if (target.room !== null) {
     const room = floor.rooms[target.room]
     return { status: room.status, text: `Кв. ${room.number} · ${room.type} · ${room.area} м² · ${room.progress}%` }
@@ -28,10 +36,12 @@ export default function ThreeScene({
   floors,
   selectedFloor,
   selectedRoom,
+  focusedArea,
   hoveredFloor,
   activeFilter,
   onFloorSelect,
   onRoomSelect,
+  onAreaFocus,
   onFloorHover,
   resetToken,
 }: Props) {
@@ -58,6 +68,7 @@ export default function ThreeScene({
     sceneRef.current?.setCallbacks({
       onSelectFloor: onFloorSelect,
       onSelectRoom: onRoomSelect,
+      onFocusArea: (_floor, _room, area) => onAreaFocus(area),
       onHover: (target, clientX, clientY) => {
         const tooltip = tooltipRef.current
         const container = containerRef.current
@@ -82,11 +93,12 @@ export default function ThreeScene({
         }
       },
     })
-  }, [floors, onFloorSelect, onRoomSelect, onFloorHover])
+  }, [floors, onFloorSelect, onRoomSelect, onAreaFocus, onFloorHover])
 
   useEffect(() => sceneRef.current?.setFloors(floors), [floors])
   useEffect(() => sceneRef.current?.setSelected(selectedFloor), [selectedFloor])
   useEffect(() => sceneRef.current?.setSelectedRoom(selectedRoom), [selectedRoom])
+  useEffect(() => sceneRef.current?.setFocusedArea(focusedArea), [focusedArea])
   useEffect(() => sceneRef.current?.setHovered(hoveredFloor), [hoveredFloor])
   useEffect(() => sceneRef.current?.setFilter(activeFilter), [activeFilter])
   useEffect(() => {

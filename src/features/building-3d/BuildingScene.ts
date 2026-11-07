@@ -1,12 +1,13 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 import {
   FLOOR_FOOTPRINT,
   STATUS_COLORS,
   type FloorSnapshot,
   type FloorStatus,
 } from "../building-info/floorService"
-import { METER } from "../apartment/apartmentLayout"
+import { METER, getApartmentLayout } from "../apartment/apartmentLayout"
 import { buildApartmentInterior, disposeObject, interiorKey } from "./apartmentInterior"
 
 export type FilterValue = FloorStatus | "all"
@@ -14,11 +15,14 @@ export type FilterValue = FloorStatus | "all"
 export interface HoverTarget {
   floor: number
   room: number | null
+  /** Комната внутри открытой квартиры */
+  area: number | null
 }
 
 export interface BuildingSceneCallbacks {
   onSelectFloor?: (floorIndex: number) => void
   onSelectRoom?: (floorIndex: number, roomIndex: number) => void
+  onFocusArea?: (floorIndex: number, roomIndex: number, areaIndex: number) => void
   /** Вызывается на каждое движение курсора, чтобы двигать тултип. */
   onHover?: (target: HoverTarget | null, clientX: number, clientY: number) => void
 }
@@ -143,9 +147,19 @@ export class BuildingScene {
   private readonly reducedMotion: boolean
   private readonly buildingHeight: number
   private crane: THREE.Group | null = null
+  private readonly environment: THREE.Texture
   private snapshots: FloorSnapshot[]
   /** Детальный интерьер выбранной квартиры */
-  private apartment: { floor: number; room: number; key: string; group: THREE.Group; reveal: number } | null = null
+  private apartment: {
+    floor: number
+    room: number
+    key: string
+    group: THREE.Group
+    labels: THREE.Sprite[]
+    reveal: number
+  } | null = null
+  private focusedArea: number | null = null
+  private hoveredArea: number | null = null
 
   private callbacks: BuildingSceneCallbacks = {}
   private selected: number | null = null
@@ -177,6 +191,15 @@ export class BuildingScene {
     this.renderer.domElement.style.display = "block"
     this.renderer.domElement.style.touchAction = "none"
     container.appendChild(this.renderer.domElement)
+
+    // Мягкое окружение для отражений: без него хром и зеркала выглядят чёрными
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    const room = new RoomEnvironment()
+    this.environment = pmrem.fromScene(room, 0.04).texture
+    room.dispose()
+    pmrem.dispose()
+    this.scene.environment = this.environment
+    this.scene.environmentIntensity = 0.35
 
     this.scene.background = new THREE.Color(BG_COLOR)
     this.scene.fog = new THREE.Fog(BG_COLOR, 28, 60)
@@ -249,9 +272,19 @@ export class BuildingScene {
   setSelectedRoom(index: number | null) {
     if (index === this.selectedRoom || this.selected === null) return
     this.selectedRoom = index
+    this.focusedArea = null
     this.controls.minDistance = index === null ? 4 : 0.8
     this.flight = index === null ? this.floorView(this.selected) : this.apartmentView(this.selected, index)
     this.syncApartment()
+  }
+
+  /** Приблизиться к комнате внутри открытой квартиры (null — вся квартира). */
+  setFocusedArea(index: number | null) {
+    if (index === this.focusedArea) return
+    this.focusedArea = index
+    if (this.selected === null || this.selectedRoom === null) return
+    this.controls.minDistance = index === null ? 0.8 : 0.3
+    this.flight = index === null ? this.apartmentView(this.selected, this.selectedRoom) : this.areaView(index)
   }
 
   setHovered(index: number | null) {
@@ -301,6 +334,7 @@ export class BuildingScene {
       }
     })
 
+    this.environment.dispose()
     this.renderer.dispose()
     canvas.remove()
   }
@@ -575,6 +609,23 @@ export class BuildingScene {
     return { target, position }
   }
 
+  /** Ракурс на одну комнату квартиры — сверху под углом, чтобы видеть мебель. */
+  private areaView(index: number) {
+    const fallback = this.floorView(this.selected ?? 0)
+    if (!this.apartment || this.selected === null || this.selectedRoom === null) return fallback
+    const snapshot = this.snapshots[this.selected].rooms[this.selectedRoom]
+    const area = getApartmentLayout(snapshot).rooms[index]
+    if (!area) return fallback
+    this.apartment.group.updateWorldMatrix(true, false)
+    const target = this.apartment.group.localToWorld(new THREE.Vector3((area.x0 + area.x1) / 2, 0, (area.z0 + area.z1) / 2))
+    target.y += 0.12
+    const span = Math.max(area.x1 - area.x0, area.z1 - area.z0) * METER + 0.2
+    const distance = this.fitDistance(span, span) + 0.35
+    // крутой ракурс, чтобы ближняя стена не загораживала комнату
+    const position = target.clone().addScaledVector(this.viewDirection(2.4), distance)
+    return { target, position }
+  }
+
   // ───────────────────────── Интерьер квартиры ─────────────────────────
 
   /** Создать, обновить или убрать интерьер выбранной квартиры. */
@@ -598,12 +649,12 @@ export class BuildingScene {
     const reveal = samePlace ? current.reveal : 0
     if (current) disposeObject(current.group)
 
-    const group = buildApartmentInterior(room)
+    const { group, labels } = buildApartmentInterior(room)
     group.position.set(room.x, 0.01, room.z)
     group.rotation.y = room.z > 0 ? Math.PI : 0 // фасадом наружу
     group.scale.set(METER, METER * Math.max(reveal, 0.01), METER)
     this.floors[floorIndex].interior.add(group)
-    this.apartment = { floor: floorIndex, room: roomIndex, key, group, reveal }
+    this.apartment = { floor: floorIndex, room: roomIndex, key, group, labels, reveal }
   }
 
   // ───────────────────────── События ─────────────────────────
@@ -636,13 +687,22 @@ export class BuildingScene {
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
     this.raycaster.setFromCamera(this.pointer, this.camera)
 
-    // Сначала — квартиры раскрытого этажа
+    // Сначала — комнаты внутри открытой квартиры
+    if (this.apartment && this.selectedRoom !== null && this.apartment.reveal > 0.5) {
+      for (const hit of this.raycaster.intersectObject(this.apartment.group, true)) {
+        let obj: THREE.Object3D | null = hit.object
+        while (obj && obj.userData.area === undefined) obj = obj.parent
+        if (obj) return { floor: this.apartment.floor, room: this.apartment.room, area: obj.userData.area as number }
+      }
+    }
+
+    // Затем — квартиры раскрытого этажа
     if (this.selected !== null) {
       const open = this.floors[this.selected]
       if (open && open.open > 0.5) {
         const tiles = open.rooms.filter((r) => r.index !== this.selectedRoom).map((r) => r.tile)
         const hit = this.raycaster.intersectObjects(tiles, false)[0]
-        if (hit) return { floor: open.index, room: hit.object.userData.roomIndex as number }
+        if (hit) return { floor: open.index, room: hit.object.userData.roomIndex as number, area: null }
       }
     }
 
@@ -650,7 +710,7 @@ export class BuildingScene {
       .filter((f) => this.isVisible(f) && f.growth > 0.5 && f.index !== this.selected)
       .map((f) => f.body)
     const hit = this.raycaster.intersectObjects(pickable, false)[0]
-    return hit ? { floor: hit.object.userData.floorIndex as number, room: null } : null
+    return hit ? { floor: hit.object.userData.floorIndex as number, room: null, area: null } : null
   }
 
   private onPointerDown = (event: PointerEvent) => {
@@ -665,20 +725,23 @@ export class BuildingScene {
     if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > CLICK_TOLERANCE_PX) return
     const target = this.pick(event)
     if (!target) return
-    if (target.room !== null) this.callbacks.onSelectRoom?.(target.floor, target.room)
+    if (target.area !== null && target.room !== null) this.callbacks.onFocusArea?.(target.floor, target.room, target.area)
+    else if (target.room !== null) this.callbacks.onSelectRoom?.(target.floor, target.room)
     else this.callbacks.onSelectFloor?.(target.floor)
   }
 
   private onPointerMove = (event: PointerEvent) => {
     if (event.pointerType !== "mouse" || this.pointerDown) return
     const target = this.pick(event)
-    this.hoveredRoom = target?.room ?? null
+    this.hoveredRoom = target?.area === null ? target.room : null
+    this.hoveredArea = target?.area ?? null
     this.renderer.domElement.style.cursor = target ? "pointer" : "grab"
     this.callbacks.onHover?.(target, event.clientX, event.clientY)
   }
 
   private onPointerLeave = (event: PointerEvent) => {
     this.hoveredRoom = null
+    this.hoveredArea = null
     this.callbacks.onHover?.(null, event.clientX, event.clientY)
   }
 
@@ -759,6 +822,12 @@ export class BuildingScene {
       const a = this.apartment
       a.reveal = damp(a.reveal, 1, 4, dt)
       a.group.scale.set(METER, METER * Math.max(a.reveal, 0.01), METER)
+      // подписи: при приближении к комнате прячем её подпись, остальные приглушаем
+      a.labels.forEach((label, i) => {
+        const target =
+          this.focusedArea === null ? (i === this.hoveredArea ? 1 : 0.85) : i === this.focusedArea ? 0 : i === this.hoveredArea ? 0.9 : 0.3
+        label.material.opacity = damp(label.material.opacity, target * a.reveal, 10, dt)
+      })
     }
 
     if (this.crane && !this.reducedMotion) {
@@ -785,7 +854,7 @@ export class BuildingScene {
         room.tile.scale.y = 1
         room.tile.position.y = 0.04
         room.walls.material.opacity = isApartment ? 0 : open * 0.2
-        room.label.material.opacity = isApartment ? 0 : open * 0.5
+        room.label.material.opacity = isApartment ? 0 : open * 0.15
         continue
       }
       room.tile.visible = true

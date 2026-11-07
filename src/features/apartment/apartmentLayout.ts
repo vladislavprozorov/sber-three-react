@@ -51,16 +51,16 @@ type Cell = [kind: RoomKind, name: string, fraction: number]
 
 const TEMPLATES: Record<string, { front: Cell[]; back: Cell[] }> = {
   "1-комн.": {
-    front: [["kitchen", "Кухня", 0.42], ["living", "Комната", 0.58]],
-    back: [["bath", "Санузел", 0.45], ["hall", "Прихожая", 0.55]],
+    front: [["kitchen", "Кухня", 0.4], ["living", "Комната", 0.6]],
+    back: [["hall", "Прихожая", 0.62], ["bath", "Санузел", 0.38]],
   },
   "2-комн.": {
-    front: [["kitchen-living", "Кухня-гостиная", 0.56], ["bedroom", "Спальня", 0.44]],
-    back: [["hall", "Прихожая", 0.55], ["bath", "Санузел", 0.45]],
+    front: [["kitchen-living", "Кухня-гостиная", 0.58], ["bedroom", "Спальня", 0.42]],
+    back: [["bath", "Санузел", 0.36], ["hall", "Прихожая", 0.64]],
   },
   "3-комн.": {
     front: [["bedroom", "Спальня", 0.32], ["living", "Гостиная", 0.36], ["bedroom", "Детская", 0.32]],
-    back: [["kitchen", "Кухня", 0.42], ["hall", "Прихожая", 0.3], ["bath", "Санузел", 0.28]],
+    back: [["kitchen", "Кухня", 0.36], ["hall", "Прихожая", 0.36], ["bath", "Санузел", 0.28]],
   },
 }
 
@@ -134,23 +134,32 @@ export function getApartmentLayout(apartment: RoomSnapshot): ApartmentLayout {
     walls.push({ axis: "z", fixed: x, from: zFacade, to: zCorridor, outer: true, gaps: [] })
   }
 
-  // Стена между жилыми комнатами и «служебной» зоной: двери как можно ближе к прихожей
-  walls.push({
-    axis: "x",
-    fixed: zSplit,
-    from: -width / 2,
-    to: width / 2,
-    outer: false,
-    gaps: front.map((r) => ({
-      at: Math.min(r.x1 - DOOR / 2 - 0.2, Math.max(r.x0 + DOOR / 2 + 0.2, hallCenter)),
-      width: DOOR,
-      kind: "door" as const,
-    })),
+  // Стена между жилыми комнатами и «служебной» зоной. Комната, которая граничит с прихожей,
+  // получает дверь в неё; иначе — дверь в соседнюю комнату ближе к прихожей (смежные комнаты).
+  const splitGaps: WallGap[] = []
+  const partitionDoors = new Set<number>()
+  front.forEach((r, i) => {
+    const lo = Math.max(r.x0, hall.x0) + DOOR / 2 + 0.1
+    const hi = Math.min(r.x1, hall.x1) - DOOR / 2 - 0.1
+    if (lo <= hi) {
+      splitGaps.push({ at: Math.min(hi, Math.max(lo, hallCenter)), width: DOOR, kind: "door" })
+    } else {
+      // индекс перегородки: между i и i+1 — это front[i + 1].x0
+      partitionDoors.add((r.x0 + r.x1) / 2 < hallCenter ? i + 1 : i)
+    }
   })
+  walls.push({ axis: "x", fixed: zSplit, from: -width / 2, to: width / 2, outer: false, gaps: splitGaps })
 
   // Перегородки между комнатами
   for (let i = 1; i < front.length; i++) {
-    walls.push({ axis: "z", fixed: front[i].x0, from: zFacade, to: zSplit, outer: false, gaps: [] })
+    walls.push({
+      axis: "z",
+      fixed: front[i].x0,
+      from: zFacade,
+      to: zSplit,
+      outer: false,
+      gaps: partitionDoors.has(i) ? [{ at: zSplit - DOOR / 2 - 0.4, width: DOOR, kind: "door" }] : [],
+    })
   }
   for (let i = 1; i < back.length; i++) {
     const touchesHall = back[i].kind === "hall" || back[i - 1].kind === "hall"

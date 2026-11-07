@@ -18,10 +18,12 @@ export default function App() {
           floors={timeline.floors}
           selectedFloor={viewer.selectedFloor}
           selectedRoom={viewer.selectedRoom}
+          focusedArea={viewer.focusedArea}
           hoveredFloor={viewer.hoveredFloor}
           activeFilter={viewer.activeFilter}
           onFloorSelect={viewer.toggleFloor}
           onRoomSelect={viewer.selectRoom}
+          onAreaFocus={viewer.focusArea}
           onFloorHover={viewer.hoverFloor}
           resetToken={viewer.resetToken}
         />
@@ -56,10 +58,12 @@ export default function App() {
         isLive={timeline.isLive}
         selectedFloor={viewer.selectedFloor}
         selectedRoom={viewer.selectedRoom}
+        focusedArea={viewer.focusedArea}
         hoveredFloor={viewer.hoveredFloor}
         activeFilter={viewer.activeFilter}
         onSelect={viewer.selectFloor}
         onSelectRoom={viewer.selectRoom}
+        onFocusArea={viewer.focusArea}
         onHover={viewer.hoverFloor}
       />
     </div>
