@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react"
+import ApartmentCard from "../apartment/ApartmentCard"
 import { FLOOR_FOOTPRINT, STATUS_COLORS, STATUS_LABELS, type RoomSnapshot } from "./floorService"
 
 type Props = {
@@ -73,25 +73,9 @@ export default function FloorPlan({ rooms, selectedRoom, onSelect }: Props) {
       </svg>
 
       {selected ? (
-        <div className="room-info fade-in" key={selected.roomIndex}>
-          <div className="room-info-head">
-            <strong>Квартира {selected.number}</strong>
-            <span className="badge" style={{ "--status-color": STATUS_COLORS[selected.status] } as CSSProperties}>
-              <span className="dot" style={{ background: STATUS_COLORS[selected.status] }} />
-              {STATUS_LABELS[selected.status]}
-            </span>
-          </div>
-          <div className="room-info-grid">
-            <span className="muted">Тип</span>
-            <span>{selected.type}</span>
-            <span className="muted">Площадь</span>
-            <span>{selected.area} м²</span>
-            <span className="muted">Готовность</span>
-            <span>{selected.progress}%</span>
-          </div>
-        </div>
+        <ApartmentCard key={selected.number} apartment={selected} onClose={() => onSelect(null)} />
       ) : (
-        <p className="plan-hint muted">Выберите квартиру на плане или в 3D</p>
+        <p className="plan-hint muted">Выберите квартиру, чтобы заглянуть внутрь</p>
       )}
     </div>
   )

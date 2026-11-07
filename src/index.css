@@ -436,17 +436,50 @@ kbd {
 .plan-number { font-size: 0.2px; font-weight: 600; fill: var(--text); text-anchor: middle; pointer-events: none; }
 .plan-type { font-size: 0.14px; fill: var(--muted); text-anchor: middle; pointer-events: none; }
 .plan-hint { margin: 8px 0 0; font-size: 12px; text-align: center; }
-.room-info {
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border);
-  font-size: 13px;
+/* Apartment card */
+
+.apartment {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid color-mix(in srgb, var(--status-color) 35%, var(--border));
 }
-.room-info-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.room-info-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
-.room-info-grid span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; }
+.apartment-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.apartment-head > div { flex: 1; display: grid; gap: 2px; font-size: 12px; min-width: 0; }
+.apartment-title { font-size: 15px; }
+.apartment-plan { display: block; width: 100%; height: auto; max-height: 260px; }
+.apartment-plan-name { font-size: 0.42px; font-weight: 600; fill: var(--text); text-anchor: middle; }
+.apartment-plan-area { font-size: 0.36px; fill: var(--muted); text-anchor: middle; }
+.apartment-plan-side { font-size: 0.3px; fill: var(--muted); text-anchor: middle; }
+.mini-title {
+  margin: 12px 0 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.explication { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 12px; }
+.explication li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.explication li .muted { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stages { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.stages li { display: flex; gap: 10px; align-items: center; font-size: 12px; }
+.stages li[data-state="todo"] { opacity: 0.5; }
+.stage-mark {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 11px;
+  border: 1.5px solid var(--border);
+}
+.stages li[data-state="done"] .stage-mark { background: var(--status-color); border-color: var(--status-color); color: #04121c; }
+.stages li[data-state="active"] .stage-mark { border-color: var(--status-color); }
+.stage-body { flex: 1; display: grid; gap: 4px; }
+.stage-name { display: flex; justify-content: space-between; gap: 8px; }
 
 /* Floor list */
 

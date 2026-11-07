@@ -6,6 +6,8 @@ import {
   type FloorSnapshot,
   type FloorStatus,
 } from "../building-info/floorService"
+import { METER } from "../apartment/apartmentLayout"
+import { buildApartmentInterior, disposeObject, interiorKey } from "./apartmentInterior"
 
 export type FilterValue = FloorStatus | "all"
 
@@ -141,6 +143,9 @@ export class BuildingScene {
   private readonly reducedMotion: boolean
   private readonly buildingHeight: number
   private crane: THREE.Group | null = null
+  private snapshots: FloorSnapshot[]
+  /** Детальный интерьер выбранной квартиры */
+  private apartment: { floor: number; room: number; key: string; group: THREE.Group; reveal: number } | null = null
 
   private callbacks: BuildingSceneCallbacks = {}
   private selected: number | null = null
@@ -158,6 +163,7 @@ export class BuildingScene {
     this.container = container
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     this.buildingHeight = floors.length * FLOOR_STEP
+    this.snapshots = floors
 
     const { width, height } = this.size()
 
@@ -217,6 +223,7 @@ export class BuildingScene {
 
   /** Обновить статусы этажей и помещений (например, при перемотке таймлайна). */
   setFloors(snapshots: FloorSnapshot[]) {
+    this.snapshots = snapshots
     for (const snapshot of snapshots) {
       const floor = this.floors[snapshot.floorIndex]
       if (!floor) continue
@@ -226,6 +233,7 @@ export class BuildingScene {
         floor.rooms[room.roomIndex]?.targetColor.set(STATUS_COLORS[room.status])
       }
     }
+    this.syncApartment()
   }
 
   setSelected(index: number | null) {
@@ -233,11 +241,17 @@ export class BuildingScene {
     this.selected = index
     this.selectedRoom = null
     this.controls.autoRotate = false
+    this.controls.minDistance = 4
     this.flight = index === null ? this.overviewView() : this.floorView(index)
+    this.syncApartment()
   }
 
   setSelectedRoom(index: number | null) {
+    if (index === this.selectedRoom || this.selected === null) return
     this.selectedRoom = index
+    this.controls.minDistance = index === null ? 4 : 0.8
+    this.flight = index === null ? this.floorView(this.selected) : this.apartmentView(this.selected, index)
+    this.syncApartment()
   }
 
   setHovered(index: number | null) {
@@ -256,6 +270,7 @@ export class BuildingScene {
 
   dispose() {
     cancelAnimationFrame(this.frameId)
+    this.apartment = null
     this.resizeObserver.disconnect()
     const canvas = this.renderer.domElement
     canvas.removeEventListener("pointerdown", this.onPointerDown)
@@ -550,6 +565,47 @@ export class BuildingScene {
     return { target, position }
   }
 
+  /** Камера почти сверху над квартирой — как на архитектурном макете. */
+  private apartmentView(floor: number, room: number) {
+    const r = this.snapshots[floor].rooms[room]
+    const target = new THREE.Vector3(r.x, BASE_Y + floor * FLOOR_STEP + 0.15, r.z)
+    const span = Math.max(r.width, r.depth) + 0.5
+    const distance = this.fitDistance(span, span) + 0.4
+    const position = target.clone().addScaledVector(this.viewDirection(2), distance)
+    return { target, position }
+  }
+
+  // ───────────────────────── Интерьер квартиры ─────────────────────────
+
+  /** Создать, обновить или убрать интерьер выбранной квартиры. */
+  private syncApartment() {
+    const floorIndex = this.selected
+    const roomIndex = this.selectedRoom
+    const room = floorIndex !== null && roomIndex !== null ? this.snapshots[floorIndex]?.rooms[roomIndex] : undefined
+    const current = this.apartment
+
+    if (!room || floorIndex === null || roomIndex === null) {
+      if (current) disposeObject(current.group)
+      this.apartment = null
+      return
+    }
+
+    const key = interiorKey(room)
+    if (current?.key === key) return
+
+    // При перемотке таймлайна та же квартира перестраивается без повторной анимации появления
+    const samePlace = current?.floor === floorIndex && current.room === roomIndex
+    const reveal = samePlace ? current.reveal : 0
+    if (current) disposeObject(current.group)
+
+    const group = buildApartmentInterior(room)
+    group.position.set(room.x, 0.01, room.z)
+    group.rotation.y = room.z > 0 ? Math.PI : 0 // фасадом наружу
+    group.scale.set(METER, METER * Math.max(reveal, 0.01), METER)
+    this.floors[floorIndex].interior.add(group)
+    this.apartment = { floor: floorIndex, room: roomIndex, key, group, reveal }
+  }
+
   // ───────────────────────── События ─────────────────────────
 
   private onControlsStart = () => {
@@ -584,7 +640,8 @@ export class BuildingScene {
     if (this.selected !== null) {
       const open = this.floors[this.selected]
       if (open && open.open > 0.5) {
-        const hit = this.raycaster.intersectObjects(open.rooms.map((r) => r.tile), false)[0]
+        const tiles = open.rooms.filter((r) => r.index !== this.selectedRoom).map((r) => r.tile)
+        const hit = this.raycaster.intersectObjects(tiles, false)[0]
         if (hit) return { floor: open.index, room: hit.object.userData.roomIndex as number }
       }
     }
@@ -679,7 +736,9 @@ export class BuildingScene {
       material.opacity = bodyOpacity
       material.depthWrite = bodyOpacity > 0.95
       material.emissiveIntensity = floor.emissive
-      floor.body.castShadow = visible && floor.open < 0.5
+      // приподнятые этажи не должны затенять раскрытый
+      floor.body.castShadow = visible && floor.open < 0.5 && !isAbove
+      floor.slab.castShadow = floor.body.castShadow
 
       floor.slab.material.opacity = Math.min(floor.opacity, 1 - floor.open)
       floor.slab.material.depthWrite = floor.slab.material.opacity > 0.95
@@ -696,6 +755,12 @@ export class BuildingScene {
       if (floor.interior.visible) this.animateRooms(floor, isSelected, dt, colorK)
     }
 
+    if (this.apartment) {
+      const a = this.apartment
+      a.reveal = damp(a.reveal, 1, 4, dt)
+      a.group.scale.set(METER, METER * Math.max(a.reveal, 0.01), METER)
+    }
+
     if (this.crane && !this.reducedMotion) {
       this.crane.rotation.y = 0.6 + Math.sin(now / 6000) * 0.5
     }
@@ -706,7 +771,24 @@ export class BuildingScene {
 
   private animateRooms(floor: FloorVisual, isSelected: boolean, dt: number, colorK: number) {
     const open = floor.open
+    const apartmentOpen = isSelected && this.selectedRoom !== null
     for (const room of floor.rooms) {
+      if (apartmentOpen) {
+        // выбранную квартиру заменяет детальный интерьер, соседние приглушаем
+        const isApartment = room.index === this.selectedRoom
+        room.highlight = damp(room.highlight, room.index === this.hoveredRoom ? 0.5 : 0, 14, dt)
+        room.tile.material.color.lerp(room.targetColor, colorK)
+        room.tile.material.emissive.copy(room.tile.material.color)
+        room.tile.material.emissiveIntensity = 0.1 + room.highlight * 0.5
+        room.tile.material.opacity = isApartment ? 0 : open * 0.3
+        room.tile.visible = !isApartment
+        room.tile.scale.y = 1
+        room.tile.position.y = 0.04
+        room.walls.material.opacity = isApartment ? 0 : open * 0.2
+        room.label.material.opacity = isApartment ? 0 : open * 0.5
+        continue
+      }
+      room.tile.visible = true
       const target = !isSelected ? 0 : room.index === this.selectedRoom ? 1 : room.index === this.hoveredRoom ? 0.5 : 0
       room.highlight = damp(room.highlight, target, 14, dt)
 
